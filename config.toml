@@ -1,0 +1,6 @@
+[FTP]
+hostname='test.rebex.net'
+port_number=21
+username='demo'
+password='password'
+working_directory=''
