@@ -1,12 +1,13 @@
+import functools
+import datetime
 import logging
 import pathlib
-import ftplib
-import shutil
 import os
 
-from .ftp import authenticate, file_names
+from .task_scheduler import schedule_daily_task
 from .logging_config import configure_logging
 from .import_config import import_config
+from .ftp import download_directory
 
 
 logger = logging.getLogger(__name__)
@@ -14,20 +15,11 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     configure_logging()
-    config = import_config()['FTP']
+    config = import_config()
 
-    temp_directory = pathlib.Path('temp')
     internal_network = pathlib.Path('network')
-    os.makedirs(temp_directory, exist_ok=True)
     os.makedirs(internal_network, exist_ok=True)
 
-    with ftplib.FTP() as ftp:
-        authenticate(ftp, config)
-        for file_name in file_names(ftp):
-            file_path = temp_directory / file_name
-            logger.info('Downloading: %s', file_name)
-            with open(file_path, 'wb') as file:
-                ftp.retrbinary('RETR ' + file_name, file.write)
-
-            shutil.move(file_path, internal_network)
-            logger.info('Moved: %s', file_name)
+    task = functools.partial(download_directory, config['FTP'], internal_network)
+    schedule_time: datetime.time = config["schedule_time"]
+    schedule_daily_task(task, schedule_time.hour, schedule_time.minute)
